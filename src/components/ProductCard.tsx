@@ -26,7 +26,7 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
           
           <div className="flex items-center justify-between mb-2">
             <span className="text-lg font-bold text-primary">
-              ${product.price.toFixed(2)}
+              ₱{product.price.toFixed(2)}
             </span>
             <Badge 
               variant={isLowStock ? "destructive" : "secondary"}

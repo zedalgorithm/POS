@@ -43,7 +43,7 @@ export const CartSidebar = ({
 
     toast({
       title: "Transaction completed!",
-      description: `Payment of $${total.toFixed(2)} processed successfully`,
+      description: `Payment of ₱${total.toFixed(2)} processed successfully`,
     });
 
     onClearCart();
@@ -125,7 +125,7 @@ export const CartSidebar = ({
                     </div>
                     
                     <span className="font-semibold text-primary">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      ₱{(item.product.price * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -138,15 +138,15 @@ export const CartSidebar = ({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>₱{total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Tax (8%):</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>₱{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total:</span>
-                  <span className="text-primary">${finalTotal.toFixed(2)}</span>
+                  <span className="text-primary">₱{finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -176,7 +176,7 @@ export const CartSidebar = ({
                 className="w-full h-12 text-base font-semibold"
                 size="lg"
               >
-                Complete Sale - ${finalTotal.toFixed(2)}
+                Complete Sale - ₱{finalTotal.toFixed(2)}
               </Button>
             </div>
           </>

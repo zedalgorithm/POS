@@ -1,15 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Settings, User, ShoppingCart } from 'lucide-react';
+import { Search, Settings, User, ShoppingCart, Plus, LogOut } from 'lucide-react';
+import { User as UserType } from '@/types/auth';
 
 interface POSHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   cartItemCount: number;
+  user: UserType;
+  onAddProduct: () => void;
+  onLogout: () => void;
 }
 
-export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount }: POSHeaderProps) => {
+export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount, user, onAddProduct, onLogout }: POSHeaderProps) => {
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-50">
       <div className="flex items-center justify-between">
@@ -33,6 +37,13 @@ export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount }: POSHea
         </div>
         
         <div className="flex items-center space-x-2">
+          {user.role === 'admin' && (
+            <Button variant="default" size="sm" onClick={onAddProduct}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Product
+            </Button>
+          )}
+          
           <div className="relative">
             <Button variant="ghost" size="sm" className="relative">
               <ShoppingCart className="w-4 h-4" />
@@ -47,12 +58,16 @@ export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount }: POSHea
             </Button>
           </div>
           
-          <Button variant="ghost" size="sm">
-            <Settings className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-1 px-2 py-1 bg-muted rounded-lg">
+            <User className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{user.name}</span>
+            <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'} className="text-xs">
+              {user.role}
+            </Badge>
+          </div>
           
-          <Button variant="ghost" size="sm">
-            <User className="w-4 h-4" />
+          <Button variant="ghost" size="sm" onClick={onLogout}>
+            <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </div>

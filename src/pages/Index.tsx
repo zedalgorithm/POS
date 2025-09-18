@@ -3,12 +3,20 @@ import { POSHeader } from '@/components/POSHeader';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { ProductCard } from '@/components/ProductCard';
 import { CartSidebar } from '@/components/CartSidebar';
+import { Login } from '@/components/Login';
+import { AddProduct } from '@/components/AddProduct';
 import { mockProducts, categories } from '@/data/mockData';
 import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
+import { Product } from '@/types/pos';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [currentView, setCurrentView] = useState<'pos' | 'add-product'>('pos');
+  const [products, setProducts] = useState(mockProducts);
+  
+  const { user, isAuthenticated, logout } = useAuth();
   
   const {
     cartItems,
@@ -21,26 +29,50 @@ const Index = () => {
   } = useCart();
 
   const filteredProducts = useMemo(() => {
-    return mockProducts.filter(product => {
+    return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            product.barcode?.includes(searchQuery) ||
                            product.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, products]);
 
   const productCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     categories.forEach(category => {
       if (category === 'All') {
-        counts[category] = mockProducts.length;
+        counts[category] = products.length;
       } else {
-        counts[category] = mockProducts.filter(p => p.category === category).length;
+        counts[category] = products.filter(p => p.category === category).length;
       }
     });
     return counts;
-  }, []);
+  }, [products]);
+
+  const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
+    const productWithId: Product = {
+      ...newProduct,
+      id: Date.now().toString(), // Simple ID generation
+    };
+    setProducts(prev => [...prev, productWithId]);
+    setCurrentView('pos');
+  };
+
+  // Show login if not authenticated
+  if (!isAuthenticated || !user) {
+    return <Login />;
+  }
+
+  // Show add product page
+  if (currentView === 'add-product') {
+    return (
+      <AddProduct 
+        onBack={() => setCurrentView('pos')}
+        onAddProduct={handleAddProduct}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,6 +80,9 @@ const Index = () => {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         cartItemCount={getTotalItems()}
+        user={user}
+        onAddProduct={() => setCurrentView('add-product')}
+        onLogout={logout}
       />
       
       <div className="flex h-[calc(100vh-80px)]">
