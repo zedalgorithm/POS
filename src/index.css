@@ -106,6 +106,13 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    /* Neutral subtle background across all pages */
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(1200px 600px at -10% -10%, hsl(0 0% 100% / 0.8) 0%, transparent 60%),
+      radial-gradient(800px 400px at 110% -10%, hsl(220 14% 96% / 0.8) 0%, transparent 60%),
+      radial-gradient(1000px 600px at 0% 110%, hsl(210 100% 97% / 0.8) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 }

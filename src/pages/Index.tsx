@@ -1,20 +1,24 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { POSHeader } from '@/components/POSHeader';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { ProductCard } from '@/components/ProductCard';
 import { CartSidebar } from '@/components/CartSidebar';
 import { Login } from '@/components/Login';
 import { AddProduct } from '@/components/AddProduct';
-import { mockProducts, categories } from '@/data/mockData';
+import { categories } from '@/data/mockData';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { Product } from '@/types/pos';
+import { useNavigate } from 'react-router-dom';
+import { listProducts } from '@/lib/db';
+import { getProductsCache, saveProductsCache } from '@/lib/offlineDB';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentView, setCurrentView] = useState<'pos' | 'add-product'>('pos');
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const navigate = useNavigate();
   
   const { user, isAuthenticated, logout } = useAuth();
   
@@ -50,14 +54,33 @@ const Index = () => {
     return counts;
   }, [products]);
 
-  const handleAddProduct = (newProduct: Omit<Product, 'id'>) => {
-    const productWithId: Product = {
-      ...newProduct,
-      id: Date.now().toString(), // Simple ID generation
-    };
-    setProducts(prev => [...prev, productWithId]);
+  const handleAddProduct = (savedProduct: Product) => {
+    setProducts(prev => [savedProduct, ...prev]);
     setCurrentView('pos');
   };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (navigator.onLine) {
+          const { data, error } = await listProducts();
+          if (!error && data) {
+            setProducts(data as Product[]);
+            try { await saveProductsCache(data as any[]); } catch {}
+            return;
+          }
+        }
+        // Offline or failed: try cache
+        const cached = await getProductsCache();
+        if (cached && Array.isArray(cached)) {
+          setProducts(cached as Product[]);
+        }
+      } catch (_) {
+        const cached = await getProductsCache();
+        if (cached && Array.isArray(cached)) setProducts(cached as Product[]);
+      }
+    })();
+  }, []);
 
   // Show login if not authenticated
   if (!isAuthenticated || !user) {
@@ -83,6 +106,7 @@ const Index = () => {
         user={user}
         onAddProduct={() => setCurrentView('add-product')}
         onLogout={logout}
+        onGoAdmin={() => navigate('/admin')}
       />
       
       <div className="flex h-[calc(100vh-80px)]">

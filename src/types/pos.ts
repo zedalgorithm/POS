@@ -6,6 +6,8 @@ export interface Product {
   stock: number;
   barcode?: string;
   image?: string;
+  /** Optional cost price (bought price) used for revenue/profit calculations */
+  boughtPrice?: number;
 }
 
 export interface CartItem {

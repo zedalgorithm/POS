@@ -8,16 +8,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Plus, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/types/pos';
+import { addProduct } from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 
 interface AddProductProps {
   onBack: () => void;
-  onAddProduct: (product: Omit<Product, 'id'>) => void;
+  onAddProduct: (product: Product) => void;
 }
 
 export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
   const [formData, setFormData] = useState({
     name: '',
     price: '',
+    boughtPrice: '',
     category: '',
     stock: '',
     barcode: ''
@@ -25,6 +28,8 @@ export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const categories = ['Beverages', 'Food', 'Snacks', 'Electronics', 'Clothing', 'Health & Beauty'];
 
@@ -46,6 +51,10 @@ export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
       setError('Please enter a valid price');
       return;
     }
+    if (formData.boughtPrice && parseFloat(formData.boughtPrice) <= 0) {
+      setError('Bought price must be greater than 0 if provided');
+      return;
+    }
     if (!formData.category) {
       setError('Please select a category');
       return;
@@ -58,38 +67,100 @@ export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 1) If there is an image, upload it to Supabase Storage first
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        const bucket = 'product-images';
+        const fileExt = imageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const safeName = formData.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const filePath = `${safeName}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: imageFile.type || 'image/jpeg',
+          });
+        if (uploadError) {
+          setError(uploadError.message || 'Failed to upload image');
+          return;
+        }
+        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        imageUrl = pub?.publicUrl || null;
+      }
 
-      const newProduct: Omit<Product, 'id'> = {
+      // 2) Create the product with the image URL (if any)
+      const { data, error: dbError } = await addProduct({
         name: formData.name.trim(),
         price: parseFloat(formData.price),
+        bought_price: formData.boughtPrice ? parseFloat(formData.boughtPrice) : null,
         category: formData.category,
-        stock: parseInt(formData.stock),
-        barcode: formData.barcode.trim() || undefined,
-      };
+        stock: parseInt(formData.stock, 10),
+        barcode: formData.barcode.trim() || null,
+        image: imageUrl,
+      });
+      if (dbError || !data) {
+        setError(dbError?.message || 'Failed to add product.');
+        return;
+      }
 
-      onAddProduct(newProduct);
-      
+      // Update local UI for immediate feedback with full Product (includes id)
+      onAddProduct({
+        id: data.id,
+        name: data.name,
+        price: Number(data.price),
+        category: data.category,
+        stock: data.stock,
+        barcode: data.barcode ?? undefined,
+        boughtPrice: data.bought_price != null ? Number(data.bought_price) : undefined,
+        image: data.image ?? undefined,
+      });
+
       toast({
         title: 'Product added successfully!',
-        description: `${newProduct.name} has been added to the inventory.`,
+        description: `${data.name} has been added to the inventory.`,
       });
 
       // Reset form
       setFormData({
         name: '',
         price: '',
+        boughtPrice: '',
         category: '',
         stock: '',
         barcode: ''
       });
+      setImageFile(null);
+      setImagePreview(null);
 
-    } catch (err) {
-      setError('Failed to add product. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to add product. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+    // Optional: limit file size to 5MB
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+    setError('');
+    setImageFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
   };
 
   return (
@@ -151,6 +222,20 @@ export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="boughtPrice">Bought Price (₱)</Label>
+                  <Input
+                    id="boughtPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={formData.boughtPrice}
+                    onChange={(e) => handleInputChange('boughtPrice', e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
                   <Select 
                     value={formData.category} 
@@ -193,6 +278,26 @@ export const AddProduct = ({ onBack, onAddProduct }: AddProductProps) => {
                     onChange={(e) => handleInputChange('barcode', e.target.value)}
                     disabled={isSubmitting}
                   />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="image">Product Image (Optional)</Label>
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={isSubmitting}
+                  />
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-32 w-32 object-cover rounded border"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

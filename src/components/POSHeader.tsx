@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Settings, User, ShoppingCart, Plus, LogOut } from 'lucide-react';
+import { Search, Settings, User, ShoppingCart, Plus, LogOut, Sun, Moon } from 'lucide-react';
 import { User as UserType } from '@/types/auth';
+import { useTheme } from '@/hooks/useTheme';
 
 interface POSHeaderProps {
   searchQuery: string;
@@ -11,14 +12,16 @@ interface POSHeaderProps {
   user: UserType;
   onAddProduct: () => void;
   onLogout: () => void;
+  onGoAdmin?: () => void;
 }
 
-export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount, user, onAddProduct, onLogout }: POSHeaderProps) => {
+export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount, user, onAddProduct, onLogout, onGoAdmin }: POSHeaderProps) => {
+  const { isDark, toggle } = useTheme();
   return (
     <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-primary">RetailPOS</h1>
+          <h1 className="text-2xl font-bold text-primary">Smart Stock Pulse</h1>
           <Badge variant="secondary" className="text-xs">
             v1.0
           </Badge>
@@ -38,10 +41,15 @@ export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount, user, on
         
         <div className="flex items-center space-x-2">
           {user.role === 'admin' && (
-            <Button variant="default" size="sm" onClick={onAddProduct}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Product
-            </Button>
+            <>
+              <Button variant="default" size="sm" onClick={onAddProduct}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Product
+              </Button>
+              {onGoAdmin && (
+                <Button variant="outline" size="sm" onClick={onGoAdmin}>Admin</Button>
+              )}
+            </>
           )}
           
           <div className="relative">
@@ -66,6 +74,10 @@ export const POSHeader = ({ searchQuery, onSearchChange, cartItemCount, user, on
             </Badge>
           </div>
           
+          <Button variant="ghost" size="sm" onClick={toggle} aria-label="Toggle theme">
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
+
           <Button variant="ghost" size="sm" onClick={onLogout}>
             <LogOut className="w-4 h-4" />
           </Button>
